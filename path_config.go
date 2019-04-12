@@ -23,7 +23,6 @@ type azureConfig struct {
 	ClientID       string `json:"client_id"`
 	ClientSecret   string `json:"client_secret"`
 	Environment    string `json:"environment"`
-	EnvStruct      azure.Environment
 }
 
 func pathConfig(b *backend) *framework.Path {
@@ -93,11 +92,10 @@ func (b *backend) pathConfigWrite(ctx context.Context, req *logical.Request, dat
 
 	if environment, ok := data.GetOk("environment"); ok {
 		e := environment.(string)
-		if env, err := azure.EnvironmentFromName(e); err != nil {
+		if _, err := azure.EnvironmentFromName(e); err != nil {
 			merr = multierror.Append(merr, err)
 		} else {
 			config.Environment = e
-			config.EnvStruct = env
 		}
 	}
 

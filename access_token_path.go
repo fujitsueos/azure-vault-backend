@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"reflect"
+	"strings"
 
 	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure"
@@ -31,8 +31,12 @@ func (b *backend) pathAccessTokenRead(ctx context.Context, req *logical.Request,
 		config = new(azureConfig)
 	}
 
-	if !IsEmptyEnvironment(config.EnvStruct) {
-		resource = config.EnvStruct.ResourceManagerEndpoint
+	if len(strings.TrimSpace(config.Environment)) > 0 {
+		if envConfig, err := azure.EnvironmentFromName(config.Environment); err != nil {
+			return nil, err
+		} else {
+			resource = envConfig.ResourceManagerEndpoint
+		}
 	} else {
 		resource = azure.PublicCloud.ResourceManagerEndpoint
 	}
@@ -57,8 +61,4 @@ func (b *backend) pathAccessTokenRead(ctx context.Context, req *logical.Request,
 		},
 	}
 	return resp, nil
-}
-
-func IsEmptyEnvironment(e azure.Environment) bool {
-	return reflect.DeepEqual(e, azure.Environment{})
 }
