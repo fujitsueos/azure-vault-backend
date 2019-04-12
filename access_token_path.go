@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"reflect"
 
 	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure"
@@ -19,16 +20,21 @@ func pathAccessToken(b *backend) *framework.Path {
 }
 
 func (b *backend) pathAccessTokenRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	resource := azure.PublicCloud.ResourceManagerEndpoint
 	AADEndpoint := azure.PublicCloud.ActiveDirectoryEndpoint
 	config, err := b.getConfig(ctx, req.Storage)
-
+	var resource string
 	if err != nil {
 		return nil, err
 	}
 
 	if config == nil {
 		config = new(azureConfig)
+	}
+
+	if !IsEmptyEnvironment(config.EnvStruct) {
+		resource = config.EnvStruct.ResourceManagerEndpoint
+	} else {
+		resource = azure.PublicCloud.ResourceManagerEndpoint
 	}
 
 	oauthConfig, err := adal.NewOAuthConfig(AADEndpoint, config.TenantID)
@@ -51,4 +57,8 @@ func (b *backend) pathAccessTokenRead(ctx context.Context, req *logical.Request,
 		},
 	}
 	return resp, nil
+}
+
+func IsEmptyEnvironment(e azure.Environment) bool {
+	return reflect.DeepEqual(e, azure.Environment{})
 }
