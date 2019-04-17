@@ -19,10 +19,9 @@ func pathAccessToken(b *backend) *framework.Path {
 }
 
 func (b *backend) pathAccessTokenRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	resource := azure.PublicCloud.ResourceManagerEndpoint
 	AADEndpoint := azure.PublicCloud.ActiveDirectoryEndpoint
 	config, err := b.getConfig(ctx, req.Storage)
-
+	var environment azure.Environment
 	if err != nil {
 		return nil, err
 	}
@@ -31,12 +30,18 @@ func (b *backend) pathAccessTokenRead(ctx context.Context, req *logical.Request,
 		config = new(azureConfig)
 	}
 
+	if config.Environment != "" {
+		environment, _ = azure.EnvironmentFromName(config.Environment)
+	} else {
+		environment = azure.PublicCloud
+	}
+
 	oauthConfig, err := adal.NewOAuthConfig(AADEndpoint, config.TenantID)
 	if err != nil {
 		return nil, err
 	}
 
-	spt, err := adal.NewServicePrincipalToken(*oauthConfig, config.ClientID, config.ClientSecret, resource)
+	spt, err := adal.NewServicePrincipalToken(*oauthConfig, config.ClientID, config.ClientSecret, environment.ResourceManagerEndpoint)
 	if err != nil {
 		return nil, err
 	}
