@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"strings"
 
 	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure"
@@ -22,7 +21,7 @@ func pathAccessToken(b *backend) *framework.Path {
 func (b *backend) pathAccessTokenRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	AADEndpoint := azure.PublicCloud.ActiveDirectoryEndpoint
 	config, err := b.getConfig(ctx, req.Storage)
-	var resource string
+	var environment azure.Environment
 	if err != nil {
 		return nil, err
 	}
@@ -31,14 +30,10 @@ func (b *backend) pathAccessTokenRead(ctx context.Context, req *logical.Request,
 		config = new(azureConfig)
 	}
 
-	if len(strings.TrimSpace(config.Environment)) > 0 {
-		if envConfig, err := azure.EnvironmentFromName(config.Environment); err != nil {
-			return nil, err
-		} else {
-			resource = envConfig.ResourceManagerEndpoint
-		}
+	if config.Environment != "" {
+		environment, _ = azure.EnvironmentFromName(config.Environment)
 	} else {
-		resource = azure.PublicCloud.ResourceManagerEndpoint
+		environment = azure.PublicCloud
 	}
 
 	oauthConfig, err := adal.NewOAuthConfig(AADEndpoint, config.TenantID)
@@ -46,7 +41,7 @@ func (b *backend) pathAccessTokenRead(ctx context.Context, req *logical.Request,
 		return nil, err
 	}
 
-	spt, err := adal.NewServicePrincipalToken(*oauthConfig, config.ClientID, config.ClientSecret, resource)
+	spt, err := adal.NewServicePrincipalToken(*oauthConfig, config.ClientID, config.ClientSecret, environment.ResourceManagerEndpoint)
 	if err != nil {
 		return nil, err
 	}
